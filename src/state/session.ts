@@ -1,4 +1,4 @@
-import { appendFileSync, readFileSync, existsSync, mkdirSync, writeFileSync } from 'fs';
+import { appendFileSync, readFileSync, existsSync, mkdirSync, writeFileSync, chmodSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
 import type { Message } from '../types.js';
@@ -12,8 +12,21 @@ export interface SessionRecord {
 }
 
 export function getSessionDir(): string {
-  const dir = join(homedir(), '.minagent', 'sessions');
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+  const baseDir = join(homedir(), '.minagent');
+  if (!existsSync(baseDir)) mkdirSync(baseDir, { recursive: true, mode: 0o700 });
+  try {
+    chmodSync(baseDir, 0o700);
+  } catch {
+    // Best effort on non-POSIX platforms
+  }
+
+  const dir = join(baseDir, 'sessions');
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true, mode: 0o700 });
+  try {
+    chmodSync(dir, 0o700);
+  } catch {
+    // Best effort on non-POSIX platforms
+  }
   return dir;
 }
 
@@ -32,7 +45,13 @@ export function recordMessage(message: Message): void {
   };
 
   const line = JSON.stringify(record) + '\n';
-  appendFileSync(getTranscriptPath(), line, 'utf-8');
+  const transcriptPath = getTranscriptPath();
+  appendFileSync(transcriptPath, line, { encoding: 'utf-8', mode: 0o600 });
+  try {
+    chmodSync(transcriptPath, 0o600);
+  } catch {
+    // Best effort on non-POSIX platforms
+  }
 }
 
 export function loadTranscript(path?: string): Message[] | null {
@@ -78,7 +97,12 @@ export function saveSessionState(messages: Message[], metadata?: Record<string, 
     messages,
     metadata,
   };
-  writeFileSync(statePath, JSON.stringify(state, null, 2), 'utf-8');
+  writeFileSync(statePath, JSON.stringify(state, null, 2), { encoding: 'utf-8', mode: 0o600 });
+  try {
+    chmodSync(statePath, 0o600);
+  } catch {
+    // Best effort on non-POSIX platforms
+  }
 }
 
 export function loadSessionState(): { messages: Message[]; metadata?: Record<string, unknown> } | null {

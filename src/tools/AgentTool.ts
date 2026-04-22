@@ -1,9 +1,88 @@
 import { z } from 'zod';
 import type { Tool } from './types.js';
 import { createLLMClient } from '../agent/llm.js';
-import { executeToolCalls } from '../agent/toolExecutor.js';
-import { defaultTools } from './index.js';
 import type { Message, ToolCall } from '../types.js';
+import type { ToolResult } from '../types.js';
+import type { ToolRegistry } from './types.js';
+
+const SUBAGENT_BLOCKED_ALWAYS = new Set(['AgentTool']);
+const SUBAGENT_DESTRUCTIVE = new Set(['BashTool', 'FileWriteTool', 'FileEditTool', 'DeleteTool', 'CodeExecuteTool']);
+
+function canSubAgentUseTool(toolName: string, permissionMode: string): boolean {
+  if (SUBAGENT_BLOCKED_ALWAYS.has(toolName)) {
+    return false;
+  }
+  if (permissionMode === 'bypassPermissions' || permissionMode === 'dontAsk') {
+    return true;
+  }
+  return !SUBAGENT_DESTRUCTIVE.has(toolName);
+}
+
+async function executeSubAgentToolCalls(
+  calls: ToolCall[],
+  permissionMode: string,
+  tools: ToolRegistry
+): Promise<ToolResult[]> {
+  const allowed: ToolCall[] = [];
+  const denied = new Map<string, ToolResult>();
+
+  for (const tc of calls) {
+    if (canSubAgentUseTool(tc.name, permissionMode)) {
+      allowed.push(tc);
+    } else {
+      denied.set(tc.id, {
+        toolCallId: tc.id,
+        name: tc.name,
+        output: `Permission denied in sub-agent: ${tc.name} is blocked in permission mode "${permissionMode}". Run this action from the main agent so it can request explicit approval.`,
+        error: true,
+      });
+    }
+  }
+
+  const allowedResults = allowed.length > 0
+    ? await executeAllowedSubAgentCalls(allowed, tools)
+    : [];
+  const allowedMap = new Map(allowedResults.map((r) => [r.toolCallId, r]));
+
+  return calls.map((tc) => denied.get(tc.id) || allowedMap.get(tc.id)!).filter(Boolean);
+}
+
+async function executeAllowedSubAgentCalls(calls: ToolCall[], tools: ToolRegistry): Promise<ToolResult[]> {
+  const results: ToolResult[] = [];
+
+  for (const tc of calls) {
+    const tool = tools[tc.name];
+    if (!tool) {
+      results.push({
+        toolCallId: tc.id,
+        name: tc.name,
+        output: `Error: Tool "${tc.name}" not found`,
+        error: true,
+      });
+      continue;
+    }
+
+    try {
+      const validated = tool.schema.parse(tc.arguments);
+      const output = await tool.execute(validated);
+      results.push({
+        toolCallId: tc.id,
+        name: tc.name,
+        output,
+        error: false,
+      });
+    } catch (err: any) {
+      results.push({
+        toolCallId: tc.id,
+        name: tc.name,
+        output: `Error: ${err.message}`,
+        error: true,
+      });
+    }
+  }
+
+  return results;
+}
 
 export const AgentToolSchema = z.object({
   description: z.string().describe('Description of the task for the sub-agent'),
@@ -13,7 +92,7 @@ export const AgentToolSchema = z.object({
 
 export const AgentTool: Tool<typeof AgentToolSchema> = {
   name: 'AgentTool',
-  description: 'Spawn a sub-agent to handle a specific task independently. Useful for parallel work or focused investigations.',
+  description: 'Spawn a sub-agent to handle a specific task independently. Useful for parallel work or focused investigations. In safe permission modes, sub-agents are restricted to non-destructive tools.',
   schema: AgentToolSchema,
   async execute(args) {
     const provider = (process.env.MINA_PROVIDER || 'generic').toLowerCase();
@@ -38,7 +117,9 @@ export const AgentTool: Tool<typeof AgentToolSchema> = {
       contextWindow: parseInt(process.env.MINA_CONTEXT_WINDOW || '128000', 10),
     };
     const llm = createLLMClient(config);
+    const { defaultTools } = await import('./index.js');
     const tools = defaultTools;
+    const permissionMode = process.env.MINA_PERMISSION_MODE || 'default';
 
     const messages: Message[] = [
       {
@@ -77,7 +158,7 @@ export const AgentTool: Tool<typeof AgentToolSchema> = {
           break;
         }
 
-        const results = await executeToolCalls(assistantToolCalls, tools);
+        const results = await executeSubAgentToolCalls(assistantToolCalls, permissionMode, tools);
         for (const result of results) {
           messages.push({
             role: 'tool',
