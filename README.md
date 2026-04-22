@@ -64,10 +64,10 @@ Set your API key and model via environment variables:
 通过环境变量配置 API Key 和模型：
 
 ```bash
-export MINA_API_KEY=sk-...          # Your API key / 你的 API 密钥
-export MINA_MODEL=gpt-4o            # Model name / 模型名称
-export MINA_PROVIDER=generic        # generic | openai | anthropic
-export MINA_BASE_URL=               # Optional: custom API endpoint / 可选：自定义 API 端点
+export MINA_PROVIDER="generic"      # openai | anthropic | generic
+export MINA_API_KEY="..."           # Your API key / 你的 API 密钥
+export MINA_MODEL="..."             # Model name / 模型名称
+export MINA_BASE_URL="..."          # Custom API endpoint / 自定义 API 端点
 ```
 
 Or use persistent config (stored in `~/.minagent/config.json`):  
@@ -75,8 +75,10 @@ Or use persistent config (stored in `~/.minagent/config.json`):
 
 ```bash
 bun run src/main.tsx
-/config MINA_API_KEY sk-...
-/config MINA_MODEL gpt-4o
+/config MINA_PROVIDER generic
+/config MINA_API_KEY ...
+/config MINA_MODEL ...
+/config MINA_BASE_URL ...
 ```
 
 ### 4. Run / 运行

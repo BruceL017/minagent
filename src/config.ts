@@ -70,10 +70,10 @@ export function validateConfig(config: Config): void {
     throw new Error(
       errors.join('\n') +
       '\n\nExample configuration:' +
-      '\n  export MINA_API_KEY=sk-...' +
-      '\n  export MINA_MODEL=gpt-4o' +
-      '\n  export MINA_BASE_URL=https://api.openai.com/v1  (optional)' +
-      '\n  export MINA_PROVIDER=openai  (openai | anthropic | generic)' +
+      '\n  export MINA_PROVIDER="generic"  # openai | anthropic | generic' +
+      '\n  export MINA_API_KEY="..."' +
+      '\n  export MINA_MODEL="..."' +
+      '\n  export MINA_BASE_URL="..."' +
       '\n  export MINA_CONTEXT_WINDOW=128000  (optional)'
     );
   }
