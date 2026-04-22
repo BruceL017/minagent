@@ -42,11 +42,11 @@ export const defaultTools: ToolRegistry = {
 };
 
 export const DESTRUCTIVE_TOOLS = new Set([
-  'BashTool', 'FileWriteTool', 'FileEditTool', 'DeleteTool', 'CodeExecuteTool',
+  'BashTool', 'FileWriteTool', 'FileEditTool', 'DeleteTool', 'CodeExecuteTool', 'AgentTool',
 ]);
 
 export const READONLY_TOOLS = new Set([
-  'FileReadTool', 'GrepTool', 'GlobTool', 'LsTool', 'TreeTool', 'WebFetchTool', 'WebSearchTool', 'AskUserTool', 'LSPTool', 'CodeExecuteTool',
+  'FileReadTool', 'GrepTool', 'GlobTool', 'LsTool', 'TreeTool', 'WebFetchTool', 'WebSearchTool', 'AskUserTool', 'LSPTool',
 ]);
 
 export function getToolDefinitions(tools: ToolRegistry) {

@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, chmodSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
 
@@ -8,6 +8,25 @@ export interface PersistentConfig {
 
 function getConfigPath(): string {
   return join(homedir(), '.minagent', 'config.json');
+}
+
+function ensurePrivateDir(path: string): void {
+  if (!existsSync(path)) {
+    mkdirSync(path, { recursive: true, mode: 0o700 });
+  }
+  try {
+    chmodSync(path, 0o700);
+  } catch {
+    // Best effort on non-POSIX platforms
+  }
+}
+
+function ensurePrivateFile(path: string): void {
+  try {
+    chmodSync(path, 0o600);
+  } catch {
+    // Best effort on non-POSIX platforms
+  }
 }
 
 export function loadPersistentConfig(): PersistentConfig {
@@ -24,8 +43,9 @@ export function loadPersistentConfig(): PersistentConfig {
 export function savePersistentConfig(config: PersistentConfig): void {
   const path = getConfigPath();
   const dir = join(homedir(), '.minagent');
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-  writeFileSync(path, JSON.stringify(config, null, 2), 'utf-8');
+  ensurePrivateDir(dir);
+  writeFileSync(path, JSON.stringify(config, null, 2), { encoding: 'utf-8', mode: 0o600 });
+  ensurePrivateFile(path);
 }
 
 export function setPersistentConfig(key: string, value: string): void {

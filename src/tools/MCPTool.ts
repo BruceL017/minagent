@@ -18,6 +18,22 @@ interface MCPServer {
 
 // In-memory cache of MCP clients
 const mcpClients = new Map<string, Client>();
+const SAFE_MCP_ENV_KEYS = [
+  'PATH',
+  'HOME',
+  'USER',
+  'LOGNAME',
+  'SHELL',
+  'TERM',
+  'TMPDIR',
+  'TMP',
+  'TEMP',
+  'LANG',
+  'LC_ALL',
+  'LC_CTYPE',
+  'TZ',
+  'PWD',
+];
 
 function loadMCPServers(): MCPServer[] {
   try {
@@ -51,8 +67,11 @@ async function getMCPClient(serverName: string): Promise<Client | null> {
     { capabilities: {} }
   );
   const env: Record<string, string> = {};
-  for (const [k, v] of Object.entries(process.env)) {
-    if (v !== undefined) env[k] = v;
+  for (const key of SAFE_MCP_ENV_KEYS) {
+    const value = process.env[key];
+    if (value !== undefined) {
+      env[key] = value;
+    }
   }
   if (server.env) {
     for (const [k, v] of Object.entries(server.env)) {

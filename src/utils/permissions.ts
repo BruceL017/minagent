@@ -35,7 +35,7 @@ export function shouldAskPermission(
     case 'dontAsk':
       return false;
     case 'acceptEdits':
-      return toolName === 'BashTool' || toolName === 'DeleteTool';
+      return toolName === 'BashTool' || toolName === 'DeleteTool' || toolName === 'CodeExecuteTool' || toolName === 'AgentTool';
     case 'plan':
       return true; // Ask for everything in plan mode
     case 'default':
@@ -47,11 +47,11 @@ export function shouldAskPermission(
 export function getPermissionDescription(mode: PermissionMode): string {
   switch (mode) {
     case 'default':
-      return 'Ask for destructive tools (write, edit, bash, delete)';
+      return 'Ask for destructive tools (write, edit, bash, delete, code execution, sub-agents)';
     case 'plan':
       return 'Ask for everything (plan mode)';
     case 'acceptEdits':
-      return 'Auto-accept file edits, ask for bash/delete';
+      return 'Auto-accept file edits, ask for bash/delete/code-execution/sub-agents';
     case 'bypassPermissions':
       return 'Bypass all permission checks (dangerous)';
     case 'dontAsk':
